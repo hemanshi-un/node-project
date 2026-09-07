@@ -1,0 +1,19 @@
+{
+  "name": "tut",
+  "version": "1.0.0",
+  "description": "node prectice",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "hello",
+    "code"
+  ],
+  "author": "hemanshi gajera",
+  "license": "ISC",
+  "dependencies": {
+    "chalk": "^6.0.0",
+    "colors": "^1.4.0"
+  }
+}
