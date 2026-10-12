@@ -1,32 +1,30 @@
-const http = require('http');
-const mongoDb = require('mongodb');
-const mongoose = require('mongoose');
+// const http = require('http');
+// const mongoDb = require('mongodb');
 const express = require('express');
-const dbConnect = require('./db.js');
-const fs = require('fs');
-const path = require('path');
-const dataFile = require('./data.js');
-const reqFilter = require('./middleware.js');
+require('./config');
+const product = require('./product');
+const multer = require('multer');
+const eventEmitter = require('events');
+// const dbConnect = require('./db.js');
+// const fs = require('fs');
+// const path = require('path');
+// const dataFile = require('./data.js');
+// const reqFilter = require('./middleware.js');
+// const os = require('os');
+// console.log(os.arch());
+// console.log(os.hostname());
+// console.log(os.freemem() / (1024 * 1024 * 1024));
+// console.log(os.totalmem() / (1024 * 1024 * 1024));
+// console.log(os.platform());
+// console.log(os.userInfo());
+// console.log(os.homedir());
+// console.log(os.cpus());
+// console.log(os.version());
+// console.log(os.machine());
 
 const app = express();
 app.use(express.json());
-app.set('view engine', 'ejs');
-
-mongoose.connect("mongodb://localhost:27017/nodedb");
-const ProductSchema = new mongoose.Schema({
-    name: String,
-    brand: String,
-    price: Number,
-    category: String
-});
-
-const addMongooseData = async () => {
-    const ProductModel = mongoose.model('products', ProductSchema);
-    let modelData = new ProductModel({name: "s28", price: 20000});
-    let result = await modelData.save();
-
-    console.log(result);
-}
+// app.set('view engine', 'ejs');
 
 // app.use(reqFilter);
 
@@ -38,51 +36,111 @@ const addMongooseData = async () => {
 
 // main();
 
-app.get('/profile', (_, res) => {
-    const user = {
-        name: "Hemanshi Gajera",
-        age: 20,
-        city: "Surat",
-        skills: ["JavaScript", "Node.js", "Express", "React"]
-    };
-    res.render('profile', { user });
-});
-
-app.get('/', async (req, res) => {
-    let dbData = await dbConnect();
-    dbData = await dbData.find().toArray();
-    res.send(dbData);
-});
-
 app.post('/store', async (req, res) => {
-    let dbData = await dbConnect();
-    let result = await dbData.insertOne(req.body);
-
+    let data = new product(req.body);
+    let result = await data.save();
+    console.log(result);
     res.send(result);
+});
+
+app.get('/list', async (req, res) => {
+    let data = await product.find();
+    res.send(data);
+});
+
+app.get('/get-product/:id', async (req, res) => {
+    let data = await product.findOne({_id: req.params.id});
+    res.send(data);
 });
 
 app.put('/update/:id', async (req, res) => {
-    const dbData = await dbConnect();
-    let result = await dbData.updateOne({_id: new mongoDb.ObjectId(req.params.id)}, {$set: req.body});
+    let data = await product.updateOne(
+        { _id: req.params.id },
+        { $set: req.body }
+    );
 
-    res.send(result);
+    res.send(data);
 });
 
 app.delete('/delete/:id', async (req, res) => {
-    console.log(req.params.id);
-    const dbData = await dbConnect();
-    let result = await dbData.deleteOne({_id: new mongoDb.ObjectId(req.params.id)});
-
-    res.send(result);
+    let data = await product.deleteOne({_id: req.params.id});
+    res.send(data);
 });
+
+app.get('/search/:key', async (req, res) => {
+    let data = await product.find({
+        "$or": [
+            { name: { $regex: req.params.key } },
+            { brand: { $regex: req.params.key } },
+            { category: { $regex: req.params.key } }
+        ]
+    });
+
+    res.send(data);
+});
+
+const uploadFile = multer({
+    storage: multer.diskStorage({
+        destination: function (req, file, cb) {
+            cb(null, './uploads');
+        },
+        filename: function (req, file, cb) {            
+            // console.log(file.originalname.split('.')[file.originalname.split('.').length - 1]);
+            cb(null, file.fieldname + '-' + Date.now() + '.' + file.mimetype.split('/')[1]);
+        }
+    })
+}).single('user_file');
+
+app.post('/upload', uploadFile, (req, res) => {    
+    
+    res.send('File uploaded successfully');
+});
+
+// app.get('/profile', (_, res) => {
+//     const user = {
+//         name: "Hemanshi Gajera",
+//         age: 20,
+//         city: "Surat",
+//         skills: ["JavaScript", "Node.js", "Express", "React"]
+//     };
+//     res.render('profile', { user });
+// });
+
+// app.get('/', async (req, res) => {
+//     let dbData = await dbConnect();
+//     dbData = await dbData.find().toArray();
+//     res.send(dbData);
+// });
+
+// app.post('/store', async (req, res) => {
+//     let dbData = await dbConnect();
+//     let result = await dbData.insertOne(req.body);
+
+//     res.send(result);
+// });
+
+// app.put('/update/:id', async (req, res) => {
+//     const dbData = await dbConnect();
+//     let result = await dbData.updateOne({_id: new mongoDb.ObjectId(req.params.id)}, {$set: req.body});
+
+//     res.send(result);
+// });
+
+// app.delete('/delete/:id', async (req, res) => {
+//     console.log(req.params.id);
+//     const dbData = await dbConnect();
+//     let result = await dbData.deleteOne({_id: new mongoDb.ObjectId(req.params.id)});
+
+//     res.send(result);
+// });
 
 app.listen(5000);
 
-http.createServer((req, resp) => {
-    resp.writeHead(200, { 'Content-Type': 'application/json' });
-    resp.write(JSON.stringify(dataFile));
-    resp.end();
-}).listen(4500);
+// http.createServer((req, resp) => {
+//     resp.writeHead(200, { 'Content-Type': 'application/json' });
+//     resp.write(JSON.stringify(dataFile));
+//     resp.end();
+// }).listen(4500);
 
 // const input = process.argv;
 
@@ -101,7 +159,7 @@ http.createServer((req, resp) => {
 // }
 
 // fs.readdir(basePath, (err, files) => {
-//     files.forEach((file) => {        
+//     files.forEach((file) => {
 //         let filePath = path.join(basePath, file);
         
 //         fs.unlinkSync(filePath, (err) => {
